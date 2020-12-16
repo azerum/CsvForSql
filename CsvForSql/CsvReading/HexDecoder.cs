@@ -5,15 +5,23 @@ namespace CsvForSql.CsvReading
     public static class HexDecoder
     {
         /// <summary>
-        /// Decodes string with hexadecimal digits to array of bytes.
+        /// Декодирует строку в шестнадцатеричном коде в массив байт.
         /// </summary>
         /// <param name="hexString">
-        /// String with hexadecimal digits. It must not include 0x prefix,
-        /// only hexadimal digits.
+        /// Строка в шестнадцатеричном коде. Строка не должна содержать
+        /// префикс 0x, только закодированные байты.
         /// </param>
-        /// <exception cref="ArgumentException"/>
-        /// <exception cref="ArgumentNullException"/>
-        /// <exception cref="FormatException"/>
+        /// <exception cref="ArgumentException">
+        /// Строка содержит знак минус -
+        /// или
+        /// Строка состоит из нечетного количества символов.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        /// Строка является null. 
+        /// </exception>
+        /// <exception cref="FormatException">
+        /// Строка содержит символы, недопустимые для шестнадцатеричного кода.
+        /// </exception>
         public static byte[] DecodeHexString(string hexString)
         {
             if (hexString.Length % 2 != 0)

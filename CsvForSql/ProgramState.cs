@@ -3,9 +3,10 @@
     public enum ProgramState
     {
         InputtingConnectionString,
-        TryingToOpenConnection,
+        TryingToConnectToServer,
         ConnectionFailed,
-        ConnectionOpened,
+        ImportingCsvToDatabase,
+        ImportFailed,
         Closing
     }
 }

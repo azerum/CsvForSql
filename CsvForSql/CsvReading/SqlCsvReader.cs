@@ -7,6 +7,23 @@ using System.IO;
 
 namespace CsvForSql.CsvReading
 {
+    /// <summary>
+    /// Реализация интерфейса <see cref="IDataReader"/> для чтения данных SQL Server из CSV файла.
+    /// </summary>
+    /// <remarks>
+    /// Для записи файла в таблицу используется класс SqlBulkCopy. У него есть
+    /// метод, копирующий в таблицу данные из IDataReader.
+    /// 
+    /// SqlDataReader реализует IDataReader и передает считанные из файла 
+    /// значения к  SqlBulkCopy.
+    ///
+    /// Для возврата значение с правильными типами, SqlDataReader сопоставляет
+    /// заголовок CSV файла со столбцами таблицы в базе.
+    /// Класс построчно читает файл и приводит считанные строки к типам столбцов
+    /// таблицы.
+    /// 
+    /// Код записи файла находится в классе SqlHelper.
+    /// </remarks>
     public class SqlCsvReader : IDataReader
     {
         private TextFieldParser csvParser;
@@ -24,6 +41,7 @@ namespace CsvForSql.CsvReading
         public bool IsClosed { get; private set; }
 
         /// <exception cref="FileNotFoundException"/>
+        /// <exception cref="MalformedLineException"/>
         /// <exception cref="HeaderColumnNotFoundInTableException"/>
         public SqlCsvReader(string filePath, DataTable schemaTable, string csvDelimeter = ",")
         {
@@ -42,6 +60,8 @@ namespace CsvForSql.CsvReading
             IsClosed = false;
         }
 
+        /// <exception cref="MalformedLineException"/>
+        /// <exception cref="HeaderColumnNotFoundInTableException"/>
         private List<DataReaderColumn> ReadHeaderColumnsAndMatchThemInSchemaTable(TextFieldParser csvParser, 
                                                                                   DataTable schemaTable)
         {
@@ -50,20 +70,22 @@ namespace CsvForSql.CsvReading
 
             foreach (string columnName in columnNames)
             {
-                DataColumn column = schemaTable.Columns[columnName];
+                DataColumn dataColumn = schemaTable.Columns[columnName];
 
-                if (column == null)
+                if (dataColumn == null)
                 {
                     throw new HeaderColumnNotFoundInTableException(columnName);
                 }    
 
-                Type columnDataType = column.DataType;
+                Type columnDataType = dataColumn.DataType;
                 matchedColums.Add(new DataReaderColumn(columnName, columnDataType));
             }
 
             return matchedColums;
         }
 
+        /// <exception cref="MalformedLineException"/>
+        /// <exception cref="FormatException"/>
         public bool Read()
         {
             if (csvParser.EndOfData)
@@ -71,42 +93,66 @@ namespace CsvForSql.CsvReading
                 return false;
             }
 
-            string[] fields = csvParser.ReadFields();
-            SetCurrentRowValues(fields);
+            string[] values = csvParser.ReadFields();
+
+            SetCurrentRowValues(values);
 
             ++RecordsAffected;
 
             return true;
         }
 
-        private void SetCurrentRowValues(string[] fields)
+        /// <exception cref="FormatException"/>
+        private void SetCurrentRowValues(string[] values)
         {
             for (int columnOrdinal = 0; columnOrdinal < FieldCount; ++columnOrdinal)
             {
-                currentRow[columnOrdinal] = CastFieldToColumnValue(fields[columnOrdinal], columnOrdinal);          
+                currentRow[columnOrdinal] = CastStringToColumnValue(values[columnOrdinal], columnOrdinal);          
             }
         }
 
-        private object CastFieldToColumnValue(string field, int columnOrdinal)
+        /// <exception cref="FormatException"/>
+        private object CastStringToColumnValue(string s, int columnOrdinal)
         {
-            if (String.IsNullOrEmpty(field))
+            if (String.IsNullOrEmpty(s))
             {
                 return null;
             }
 
-            object columnValue;
+            object columnValue = null;
             Type columnDataType = Header[columnOrdinal].DataType;
 
             if (columnDataType.Equals(typeof(byte[])))
             {
-                columnValue = HexDecoder.DecodeHexString(field);
+                try
+                {
+                    columnValue = HexDecoder.DecodeHexString(s);
+                }
+                catch (Exception ex) when (IsHexDecoderException(ex))
+                {
+                    ThrowBinaryColumnFormatException(Header[columnOrdinal].Name, s);
+                }
             }
             else
             {
-                columnValue = Convert.ChangeType(field, columnDataType);
+                columnValue = Convert.ChangeType(s, columnDataType);
             }
 
             return columnValue;
+        }
+
+        private bool IsHexDecoderException(Exception ex)
+        {
+            return ex is ArgumentException ||
+                   ex is FormatException;
+        }
+
+        private void ThrowBinaryColumnFormatException(string columnName, string value)
+        {
+            string message = $"Binary column {columnName}" +
+                             $" contains invalid hexadecimal value - \"{value}\".";
+
+            throw new FormatException(message);
         }
 
         public bool NextResult()
@@ -130,6 +176,7 @@ namespace CsvForSql.CsvReading
             csvParser = null;
         }
 
+        /// <exception cref="ArgumentException"/>
         public int GetOrdinal(string name)
         {
            foreach (DataReaderColumn column in Header)
@@ -163,6 +210,7 @@ namespace CsvForSql.CsvReading
             return Header[i].Guid;
         }
 
+        /// <exception cref="NotSupportedException"/>
         public IDataReader GetData(int i)
         {
             throw new NotSupportedException();

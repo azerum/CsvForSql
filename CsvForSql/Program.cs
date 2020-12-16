@@ -1,6 +1,10 @@
-﻿using System;
+﻿using CsvForSql.CsvReading;
+using Microsoft.VisualBasic.FileIO;
+using System;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.IO;
+using System.Threading;
 
 namespace CsvForSql
 {
@@ -19,11 +23,18 @@ namespace CsvForSql
         {
             state = ProgramState.InputtingConnectionString;
             connection = null;
+
+            //Язык интерфейса программы - английский.
+            //Устанавливаем нейтральную локаль для того, чтобы сообщения исключений
+            //тоже выводились на английском.
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
         }
 
         private void Run()
         {
             bool running = true;
+
+            WelcomeMessage();
 
             while (running)
             {
@@ -33,16 +44,20 @@ namespace CsvForSql
                         InputConnectionStringAndCreateConnection();
                         break;
                        
-                    case ProgramState.TryingToOpenConnection:
-                        TryToOpenConnection();
+                    case ProgramState.TryingToConnectToServer:
+                        TryToConnectToServer();
                         break;
 
                     case ProgramState.ConnectionFailed:
                         OnConnectionFailed();
                         break;
 
-                    case ProgramState.ConnectionOpened:
-                        OnConnectionOpened();
+                    case ProgramState.ImportingCsvToDatabase:
+                        ImportCsvToDatabase();
+                        break;
+
+                    case ProgramState.ImportFailed:
+                        OnImportFailed();
                         break;
 
                     case ProgramState.Closing:
@@ -53,6 +68,12 @@ namespace CsvForSql
             }
         }
 
+        private void WelcomeMessage()
+        {
+            Console.WriteLine("Import csv file to SQL Server.");
+            Console.WriteLine();
+        }
+
         private void InputConnectionStringAndCreateConnection()
         {
             SqlConnectionStringBuilder connectionStringBuilder = new SqlConnectionStringBuilder();
@@ -60,7 +81,8 @@ namespace CsvForSql
             connectionStringBuilder.DataSource = ConsoleInput.AskString("SQL Server instance name");
             Console.WriteLine();
 
-            int authType = ConsoleInput.ChooseOption("1. Windows Authentication\n" +
+            int authType = ConsoleInput.ChooseOption("Choose type of authentication\n\n" +
+                                                     "1. Windows Authentication\n" +
                                                      "2. SQL Server Authentication\n",
                                                       1, 2);
             Console.WriteLine();
@@ -81,38 +103,41 @@ namespace CsvForSql
             Console.WriteLine();
 
             connection = new SqlConnection(connectionStringBuilder.ToString());
-            state = ProgramState.TryingToOpenConnection;
+            state = ProgramState.TryingToConnectToServer;
         }
 
-        private void TryToOpenConnection()
+        private void TryToConnectToServer()
         {
             Console.WriteLine("Trying to connect to server...");
 
             try
             {
                 connection.Open();
-                state = ProgramState.ConnectionOpened;
+
+                Console.WriteLine("Success!");
+                Console.WriteLine();
+
+                state = ProgramState.ImportingCsvToDatabase;
             }
             catch (SqlException)
             {
+                Console.WriteLine("Connection failed.");
                 state = ProgramState.ConnectionFailed;
             }
         }
 
         private void OnConnectionFailed()
         {
-            Console.WriteLine("Connection failed.");
             Console.WriteLine();
 
             string choice = ConsoleInput.ChooseOption("t - try again, i - input again, q - quit",
-                                                      optionsComparison: StringComparison.OrdinalIgnoreCase,
                                                       "t", "i", "q");
             Console.WriteLine();
 
             switch (choice)
             {
                 case "t":
-                    state = ProgramState.TryingToOpenConnection;
+                    state = ProgramState.TryingToConnectToServer;
                     break;
 
                 case "i":
@@ -125,21 +150,30 @@ namespace CsvForSql
             }
         }
 
-        private void OnConnectionOpened()
-        {
+        private void ImportCsvToDatabase()
+        { 
             string tableName = InputTableName();
             string csvFilePath = InputCsvFilePath();
+
+            Console.WriteLine();
 
             try
             {
                 SqlHelper.ImportCsvToTable(csvFilePath, connection, tableName);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
 
-            state = ProgramState.Closing;
+                Console.WriteLine("Csv file successfully imported!");
+                state = ProgramState.Closing;
+            }
+            catch (Exception ex) when (IsCsvException(ex))
+            {
+                Console.WriteLine($"Csv file error: {ex.Message}");
+                state = ProgramState.ImportFailed;
+            }
+            catch (SqlException ex)
+            {
+                Console.WriteLine($"SQL error: {ex.Message}");
+                state = ProgramState.ImportFailed;
+            }
         }
 
         private string InputTableName()
@@ -152,7 +186,7 @@ namespace CsvForSql
 
                 if (!SqlHelper.CheckIfTableExistsInDatabase(connection, tableName))
                 {
-                    Console.WriteLine($"Cannot find table \"{tableName}\".");
+                    Console.WriteLine($"Table \"{tableName}\" not found.");
                     Console.WriteLine();
                 }
                 else
@@ -170,13 +204,13 @@ namespace CsvForSql
 
             while (true)
             {
-                //При перетягивании файла в консоль путь к файлу может взяться в кавычки.
-                //Убираем их.
+                //При перетаскивании файла в консоль путь к нему может взяться в кавычки.
+                //Их нужно убрать.
                 csvFilePath = ConsoleInput.AskString("Csv file path").Trim('\'', '"');
 
                 if (!File.Exists(csvFilePath))
                 {
-                    Console.WriteLine("Cannot find file.");
+                    Console.WriteLine("File not found.");
                     Console.WriteLine();
                 }
                 else
@@ -186,6 +220,32 @@ namespace CsvForSql
             }
 
             return csvFilePath;
+        }
+
+        private bool IsCsvException(Exception ex)
+        {
+            return ex is HeaderColumnNotFoundInTableException ||
+                   ex is MalformedLineException ||
+                   ex is FormatException;
+        }
+
+        private void OnImportFailed()
+        {
+            Console.WriteLine();
+
+            string choice = ConsoleInput.ChooseOption("i - input table name and file path again, q - quit",
+                                                      "i", "q");
+
+            switch (choice)
+            {
+                case "i":
+                    state = ProgramState.ImportingCsvToDatabase;
+                    break;
+
+                case "q":
+                    state = ProgramState.Closing;
+                    break;
+            }
         }
     }
 }

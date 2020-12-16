@@ -39,16 +39,20 @@ namespace CsvForSql
 
         public static string ChooseOption(string optionsPromt, params string[] options)
         {
-            return ChooseOption(optionsPromt, StringComparison.Ordinal, options);
+            return ChooseOption(optionsPromt, ignoreCase: true, options);
         }
 
-        public static string ChooseOption(string optionsPromt, StringComparison optionsComparison,
+        public static string ChooseOption(string optionsPromt, bool ignoreCase,
                                           params string[] options)
         {
             Console.WriteLine(optionsPromt);
             int inputLineNumber = Console.CursorTop;
 
             string choice;
+
+            StringComparison optionsComparison = (ignoreCase) ?
+                                                 StringComparison.OrdinalIgnoreCase :
+                                                 StringComparison.Ordinal;
 
             do
             {
