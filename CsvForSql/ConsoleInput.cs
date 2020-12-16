@@ -20,7 +20,7 @@ namespace CsvForSql
 
             while (true)
             {
-                ClearAllBetweenCursorAndLine(inputLineNumber);
+                ClearAllBetweenCursorAndLineWithNumber(inputLineNumber);
 
                 Console.Write("> ");
                 string input = Console.ReadLine();
@@ -42,7 +42,7 @@ namespace CsvForSql
             return ChooseOption(optionsPromt, StringComparison.Ordinal, options);
         }
 
-        public static string ChooseOption(string optionsPromt, StringComparison optionsComparsion,
+        public static string ChooseOption(string optionsPromt, StringComparison optionsComparison,
                                           params string[] options)
         {
             Console.WriteLine(optionsPromt);
@@ -52,17 +52,17 @@ namespace CsvForSql
 
             do
             {
-                ClearAllBetweenCursorAndLine(inputLineNumber);
+                ClearAllBetweenCursorAndLineWithNumber(inputLineNumber);
 
                 Console.Write("> ");
                 choice = Console.ReadLine();
             }
-            while (!options.Any(option => String.Equals(option, choice, optionsComparsion)));
+            while (!options.Any(option => String.Equals(option, choice, optionsComparison)));
 
             return choice;
         }
 
-        private static void ClearAllBetweenCursorAndLine(int lineNumber)
+        private static void ClearAllBetweenCursorAndLineWithNumber(int lineNumber)
         {
             int lastLineNumber = Console.CursorTop;
             string cleanLine = new string(' ', Console.BufferWidth);

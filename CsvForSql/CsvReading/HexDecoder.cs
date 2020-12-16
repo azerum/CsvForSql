@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace CsvForSql
+namespace CsvForSql.CsvReading
 {
     public static class HexDecoder
     {

@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.IO;
 
-namespace CsvForSql
+namespace CsvForSql.CsvReading
 {
     public class SqlCsvReader : IDataReader
     {

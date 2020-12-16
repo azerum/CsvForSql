@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConsoleInput.cs" />
+    <Compile Include="SqlHelper.cs" />
     <Compile Include="HeaderColumnNotFoundInTableException.cs" />
     <Compile Include="DataReaderColumn.cs" />
     <Compile Include="HexDecoder.cs" />
