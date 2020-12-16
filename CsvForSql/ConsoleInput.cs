@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CsvForSql
 {
@@ -10,26 +7,27 @@ namespace CsvForSql
     {
         public static string AskString(string promtMessage)
         {
-            Console.WriteLine($"{promtMessage} > ");
+            Console.Write($"{promtMessage} > ");
             return Console.ReadLine();
         }
 
-        public static int ChooseFromList(string listPromt, params int[] choices)
+        public static int ChooseOption(string optionsPromt, params int[] options)
         {
-            Console.WriteLine(listPromt);
+            Console.WriteLine(optionsPromt);
+            int inputLineNumber = Console.CursorTop;
 
             int choice;
 
             while (true)
             {
-                ClearPreviousLine();
+                ClearAllBetweenCursorAndLine(inputLineNumber);
 
-                Console.WriteLine("> ");
+                Console.Write("> ");
                 string input = Console.ReadLine();
 
                 if (Int32.TryParse(input, out choice))
                 {
-                    if (choices.Contains(choice))
+                    if (options.Contains(choice))
                     {
                         break;
                     }
@@ -39,15 +37,43 @@ namespace CsvForSql
             return choice;
         }
 
-        private static void ClearPreviousLine()
+        public static string ChooseOption(string optionsPromt, params string[] options)
         {
-            int cursorTop = Console.CursorTop;
-            int cursorLeft = Console.CursorLeft;
+            return ChooseOption(optionsPromt, StringComparison.Ordinal, options);
+        }
 
-            Console.SetCursorPosition(0, Math.Max(0, cursorTop - 1));
-            Console.Write(new string(' ', Console.WindowWidth));
+        public static string ChooseOption(string optionsPromt, StringComparison optionsComparsion,
+                                          params string[] options)
+        {
+            Console.WriteLine(optionsPromt);
+            int inputLineNumber = Console.CursorTop;
 
-            Console.SetCursorPosition(cursorLeft, cursorTop);
+            string choice;
+
+            do
+            {
+                ClearAllBetweenCursorAndLine(inputLineNumber);
+
+                Console.Write("> ");
+                choice = Console.ReadLine();
+            }
+            while (!options.Any(option => String.Equals(option, choice, optionsComparsion)));
+
+            return choice;
+        }
+
+        private static void ClearAllBetweenCursorAndLine(int lineNumber)
+        {
+            int lastLineNumber = Console.CursorTop;
+            string cleanLine = new string(' ', Console.BufferWidth);
+
+            for (int line = lineNumber; line <= lastLineNumber; ++line)
+            {
+                Console.SetCursorPosition(0, line);
+                Console.Write(cleanLine);
+            }
+
+            Console.SetCursorPosition(0, lineNumber);
         }
     }
 }

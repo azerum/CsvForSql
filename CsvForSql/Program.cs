@@ -6,174 +6,96 @@ using System.IO;
 
 namespace CsvForSql
 {
-    enum SqlAutheticationType
-    {
-        WindowsAutentication,
-        SqlServerAutentication
-    }
-
     class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Import CSV file to SQL Server database");
-            Console.WriteLine();
+            SqlConnection connection = InputDataAndOpenConnection();
+            connection?.Close();
+        }
 
+        private static SqlConnection InputDataAndOpenConnection()
+        {
             SqlConnectionStringBuilder connectionStringBuilder = new SqlConnectionStringBuilder();
             SqlConnection connection = null;
 
-            bool inputtingConnection = true;
-
-            while (inputtingConnection)
+            while (true)
             {
-                Console.Write("SQL Server instance name > ");
-                connectionStringBuilder.DataSource = Console.ReadLine();
-
+                connectionStringBuilder.DataSource = ConsoleInput.AskString("SQL Server instance name");
                 Console.WriteLine();
 
-                Console.WriteLine("Choose type of authentication: ");
-                Console.WriteLine("1. Windows Authentication");
-                Console.WriteLine("2. SQL Server Authentication");
-                Console.Write("> ");
-             
-
+                int authType = ConsoleInput.ChooseOption("1. Windows Authentication\n" +
+                                                         "2. SQL Server Authentication\n",
+                                                          1, 2);
                 Console.WriteLine();
 
-                if (input == "1")
+                if (authType == 1)
                 {
                     connectionStringBuilder.IntegratedSecurity = true;
                 }
                 else
                 {
-                    Console.Write("Login > ");
-                    connectionStringBuilder.UserID = Console.ReadLine();
-
-                    Console.Write("Password > ");
-                    connectionStringBuilder.Password = Console.ReadLine();
+                    connectionStringBuilder.UserID = ConsoleInput.AskString("User login");
+                    connectionStringBuilder.Password = ConsoleInput.AskString("Password");
 
                     Console.WriteLine();
                 }
 
-                Console.Write("Database name > ");
-                connectionStringBuilder.InitialCatalog = Console.ReadLine();
+                connectionStringBuilder.InitialCatalog = ConsoleInput.AskString("Database name");
+                Console.WriteLine();
 
-                bool tryingToConnect = true;
+                connection = new SqlConnection(connectionStringBuilder.ToString());
+                bool connectionOpened = TryToOpenConnection(connection);
 
-                while (tryingToConnect)
+                if (connectionOpened)
                 {
-                    Console.WriteLine("Trying to connect...");
-
-                    try
-                    {
-                        connection = new SqlConnection(connectionStringBuilder.ToString());
-                        connection.Open();
-
-                        Console.WriteLine("Success!");
-                        Console.WriteLine();
-
-                        tryingToConnect = false;
-                        inputtingConnection = false;
-                    }
-                    catch (SqlException)
-                    {
-                        Console.WriteLine("Connection failed.");
-
-                        Console.WriteLine();
-
-                        Console.WriteLine("t - try again, i - input information again, q - quit (default - q)");
-                        Console.Write("> ");
-
-                        input = Console.ReadLine();
-
-                        switch (input)
-                        {
-                            case "t":
-                            case "T":
-                                tryingToConnect = true;
-                                inputtingConnection = true;
-                                break;
-
-                            case "i":
-                            case "I":
-                                tryingToConnect = false;
-                                inputtingConnection = true;
-                                break;
-
-                            case "q":
-                            case "Q":
-                            default:
-                                return;
-                        }
-
-                        Console.WriteLine();
-                    }
+                    break;
                 }
             }
 
-            Console.WriteLine();
-
-            string tableName = InputTableName(connection);
-            string csvFilePath = InputCsvFilePath();
-
-            try
-            {
-                ImportCsvToTable(csvFilePath, connection, tableName);
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            catch (HeaderColumnNotFoundInTableException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            catch (MalformedLineException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            finally
-            {
-                connection?.Close();
-            }
+            return connection;
         }
 
-        private static SqlAutheticationType InputAutheticationType()
+        private static bool TryToOpenConnection(SqlConnection connection)
         {
-            string input;
+            bool connectionOpened;
 
-            do
+            while (true)
             {
-                input = Console.ReadLine();
+                Console.WriteLine("Trying to connect to server...");
 
-                int? choise = null;
-                Int32.TryParse(input, out choise);
-            }
-            while (cho != "1" && input != "2");
-        }
-
-        private static string InputTableName(SqlConnection connection)
-        {
-            string tableName = default;
-            bool inputtingTableName = true;
-
-            while (inputtingTableName)
-            {
-                Console.Write("Table name > ");
-                tableName = Console.ReadLine();
-
-                if (!CheckIfTableExistsInDatabase(connection, tableName))
+                try
                 {
-                    Console.WriteLine("Table not found.");
+                    connection.Open();
+
+                    connectionOpened = true;
+                    break;
+                }
+                catch (SqlException)
+                {
+                    Console.WriteLine("Connection failed.");
                     Console.WriteLine();
-                }
-                else
-                {
-                    inputtingTableName = false;
+
+                    string choice = ConsoleInput.ChooseOption("t - try again, i - input again, q - quit",
+                                                              StringComparison.OrdinalIgnoreCase,
+                                                              "t", "i", "q");
+                    Console.WriteLine();
+
+                    if (choice == "t")
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        connectionOpened = false;
+                        break;
+                    }
                 }
             }
 
-            return tableName;
+            return connectionOpened;
         }
+
 
         private static bool CheckIfTableExistsInDatabase(SqlConnection connection, string tableName)
         {
@@ -185,31 +107,6 @@ namespace CsvForSql
             int tablesCount = (int)command.ExecuteScalar();
 
             return tablesCount > 0;
-        }
-
-        private static string InputCsvFilePath()
-        {
-            string csvFilePath = default;
-            bool inputtingFilePath = true;
-
-            while (inputtingFilePath)
-            {
-                Console.Write("Csv file name > ");
-                csvFilePath = Console.ReadLine().Trim('\'', '"');
-
-                if (!File.Exists(csvFilePath))
-                {
-                    Console.WriteLine("File not found or cannot be accesed.");
-                }
-                else
-                {
-                    inputtingFilePath = false;
-                }
-
-                Console.WriteLine();
-            }
-
-            return csvFilePath;
         }
 
         private static void ImportCsvToTable(string csvFilePath, SqlConnection connection, string tableName)
