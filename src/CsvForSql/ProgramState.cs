@@ -4,6 +4,7 @@
     {
         InputtingConnectionString,
         TryingToConnectToServer,
+        ConnectionCancelled,
         ConnectionFailed,
         ImportingCsvToDatabase,
         ImportFailed,

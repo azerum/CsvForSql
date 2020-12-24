@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace CsvForSql
 {
@@ -12,6 +13,8 @@ namespace CsvForSql
     {
         private ProgramState state;
         private SqlConnection connection;
+
+        private CancellationTokenSource connectionCancellation;
 
         static void Main(string[] args)
         {
@@ -27,7 +30,10 @@ namespace CsvForSql
             //Язык интерфейса программы - английский.
             //Устанавливаем нейтральную локаль для того, чтобы сообщения исключений
             //тоже выводились на английском.
+            //TODO: move this to Main()
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+
+            connectionCancellation = new CancellationTokenSource();
         }
 
         private void Run()
@@ -46,6 +52,10 @@ namespace CsvForSql
                        
                     case ProgramState.TryingToConnectToServer:
                         TryToConnectToServer();
+                        break;
+
+                    case ProgramState.ConnectionCancelled:
+                        OnConnectionCancelled();
                         break;
 
                     case ProgramState.ConnectionFailed:
@@ -108,30 +118,61 @@ namespace CsvForSql
 
         private void TryToConnectToServer()
         {
+            Console.CancelKeyPress += TryingToConnect_CancelKeyPress;
             Console.WriteLine("Trying to connect to server...");
 
             try
             {
-                connection.Open();
+                CancellationToken connectionCancellationToken = connectionCancellation.Token;
+                Task connectingTask = connection.OpenAsync(connectionCancellationToken);
+
+                Task.WaitAll(connectingTask);            
 
                 Console.WriteLine("Success!");
                 Console.WriteLine();
 
                 state = ProgramState.ImportingCsvToDatabase;
             }
-            catch (SqlException)
+            catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
+            {            
+                state = ProgramState.ConnectionCancelled;
+            }
+            catch (AggregateException ex) when (ex.InnerException is SqlException)
             {
-                Console.WriteLine("Connection failed.");
                 state = ProgramState.ConnectionFailed;
             }
+
+            Console.CancelKeyPress -= TryingToConnect_CancelKeyPress;
+        }
+
+        private void TryingToConnect_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
+        {
+            connectionCancellation.Cancel();
+            e.Cancel = true;
+        }
+
+        private void OnConnectionCancelled()
+        {
+            Console.WriteLine("Connection cancelled.");
+            Console.WriteLine();
+
+            Console.WriteLine("What to do next?");
+            AskWhatToDoNextAndSwitchState();
         }
 
         private void OnConnectionFailed()
         {
+            Console.WriteLine("Connection failed.");
             Console.WriteLine();
 
-            string choice = ConsoleInput.ChooseOption("t - try again, i - input again, q - quit",
-                                                      "t", "i", "q");
+            AskWhatToDoNextAndSwitchState();
+        }
+
+        private void AskWhatToDoNextAndSwitchState()
+        {
+            string optionsPromt = "t - try to connect again, i - input connection data again, q - quit";
+            string choice = ConsoleInput.ChooseOption(optionsPromt, "t", "i", "q");
+
             Console.WriteLine();
 
             switch (choice)
@@ -167,11 +208,15 @@ namespace CsvForSql
             catch (Exception ex) when (IsCsvException(ex))
             {
                 Console.WriteLine($"Csv file error: {ex.Message}");
+                Console.WriteLine();
+
                 state = ProgramState.ImportFailed;
             }
             catch (SqlException ex)
             {
                 Console.WriteLine($"SQL error: {ex.Message}");
+                Console.WriteLine();
+
                 state = ProgramState.ImportFailed;
             }
         }
@@ -231,10 +276,10 @@ namespace CsvForSql
 
         private void OnImportFailed()
         {
-            Console.WriteLine();
-
             string choice = ConsoleInput.ChooseOption("i - input table name and file path again, q - quit",
                                                       "i", "q");
+
+            Console.WriteLine();
 
             switch (choice)
             {
