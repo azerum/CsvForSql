@@ -18,6 +18,11 @@ namespace CsvForSql
 
         static void Main(string[] args)
         {
+            //Язык интерфейса программы - английский.
+            //Устанавливаем нейтральную локаль для того, чтобы сообщения исключений
+            //тоже выводились на английском.
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+
             Program program = new Program();
             program.Run();
         }
@@ -26,12 +31,6 @@ namespace CsvForSql
         {
             state = ProgramState.InputtingConnectionString;
             connection = null;
-
-            //Язык интерфейса программы - английский.
-            //Устанавливаем нейтральную локаль для того, чтобы сообщения исключений
-            //тоже выводились на английском.
-            //TODO: move this to Main()
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
             connectionCancellation = new CancellationTokenSource();
         }
@@ -192,15 +191,17 @@ namespace CsvForSql
         }
 
         private void ImportCsvToDatabase()
-        { 
-            string tableName = InputTableName();
+        {
+            SqlDatabaseHelper databaseHelper = new SqlDatabaseHelper(connection);
+
+            string tableName = InputTableName(databaseHelper);
             string csvFilePath = InputCsvFilePath();
 
             Console.WriteLine();
 
             try
             {
-                SqlHelper.ImportCsvToTable(csvFilePath, connection, tableName);
+                databaseHelper.ImportCsvToTable(csvFilePath, tableName);
 
                 Console.WriteLine("Csv file successfully imported!");
                 state = ProgramState.Closing;
@@ -221,7 +222,7 @@ namespace CsvForSql
             }
         }
 
-        private string InputTableName()
+        private string InputTableName(SqlDatabaseHelper databaseHelper)
         {
             string tableName;
 
@@ -229,7 +230,7 @@ namespace CsvForSql
             {
                 tableName = ConsoleInput.AskString("Table name");
 
-                if (!SqlHelper.CheckIfTableExistsInDatabase(connection, tableName))
+                if (!databaseHelper.CheckIfTableExists(tableName))
                 {
                     Console.WriteLine($"Table \"{tableName}\" not found.");
                     Console.WriteLine();

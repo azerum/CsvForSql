@@ -46,7 +46,7 @@
   <ItemGroup>
     <Compile Include="ConsoleInput.cs" />
     <Compile Include="ProgramState.cs" />
-    <Compile Include="SqlHelper.cs" />
+    <Compile Include="SqlDatabaseHelper.cs" />
     <Compile Include="CsvReading\HeaderColumnNotFoundInTableException.cs" />
     <Compile Include="CsvReading\DataReaderColumn.cs" />
     <Compile Include="CsvReading\HexDecoder.cs" />
