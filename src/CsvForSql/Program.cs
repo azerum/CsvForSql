@@ -1,4 +1,5 @@
 ﻿using CsvForSql.CsvReading;
+
 using Microsoft.VisualBasic.FileIO;
 using System;
 using System.Data.SqlClient;
@@ -79,7 +80,7 @@ namespace CsvForSql
 
         private void WelcomeMessage()
         {
-            Console.WriteLine("Import csv file to SQL Server.");
+            Console.WriteLine("Import CSV file to SQL Server.");
             Console.WriteLine();
         }
 

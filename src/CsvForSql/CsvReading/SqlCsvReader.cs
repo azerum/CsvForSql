@@ -17,7 +17,7 @@ namespace CsvForSql.CsvReading
     /// SqlDataReader реализует IDataReader и передает считанные из файла 
     /// значения к  SqlBulkCopy.
     ///
-    /// Для возврата значение с правильными типами, SqlDataReader сопоставляет
+    /// Для возврата значений с правильными типами, SqlDataReader сопоставляет
     /// заголовок CSV файла со столбцами таблицы в базе.
     /// Класс построчно читает файл и приводит считанные строки к типам столбцов
     /// таблицы.
@@ -29,7 +29,7 @@ namespace CsvForSql.CsvReading
         private TextFieldParser csvParser;
         private object[] currentRow;
 
-        public ReadOnlyCollection<DataReaderColumn> Header { get; }
+        public ReadOnlyCollection<CsvReaderColumn> Header { get; }
 
         public int FieldCount => Header.Count;
 
@@ -62,10 +62,10 @@ namespace CsvForSql.CsvReading
 
         /// <exception cref="MalformedLineException"/>
         /// <exception cref="HeaderColumnNotFoundInTableException"/>
-        private List<DataReaderColumn> ReadHeaderColumnsAndMatchThemInSchemaTable(TextFieldParser csvParser, 
-                                                                                  DataTable schemaTable)
+        private List<CsvReaderColumn> ReadHeaderColumnsAndMatchThemInSchemaTable(TextFieldParser csvParser, 
+                                                                                 DataTable schemaTable)
         {
-            List<DataReaderColumn> matchedColums = new List<DataReaderColumn>();
+            List<CsvReaderColumn> matchedColums = new List<CsvReaderColumn>();
             string[] columnNames = csvParser.ReadFields();
 
             foreach (string columnName in columnNames)
@@ -78,7 +78,7 @@ namespace CsvForSql.CsvReading
                 }    
 
                 Type columnDataType = dataColumn.DataType;
-                matchedColums.Add(new DataReaderColumn(columnName, columnDataType));
+                matchedColums.Add(new CsvReaderColumn(columnName, columnDataType));
             }
 
             return matchedColums;
@@ -149,8 +149,8 @@ namespace CsvForSql.CsvReading
 
         private void ThrowBinaryColumnFormatException(string columnName, string value)
         {
-            string message = $"Binary column {columnName}" +
-                             $" contains invalid hexadecimal value - \"{value}\".";
+            string message = $"Binary column {columnName} " +
+                             $"contains invalid hexadecimal value - \"{value}\".";
 
             throw new FormatException(message);
         }
@@ -179,7 +179,7 @@ namespace CsvForSql.CsvReading
         /// <exception cref="ArgumentException"/>
         public int GetOrdinal(string name)
         {
-           foreach (DataReaderColumn column in Header)
+           foreach (CsvReaderColumn column in Header)
            {
                 if (column.Name == name)
                 {
@@ -303,7 +303,7 @@ namespace CsvForSql.CsvReading
         {
             DataTable schemaTable = new DataTable();
 
-            foreach (DataReaderColumn headerColumn in Header)
+            foreach (CsvReaderColumn headerColumn in Header)
             {
                 schemaTable.Columns.Add(headerColumn.Name, headerColumn.DataType);
             }

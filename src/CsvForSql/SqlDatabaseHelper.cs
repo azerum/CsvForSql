@@ -1,5 +1,5 @@
 ﻿using CsvForSql.CsvReading;
-using System;
+
 using System.Data;
 using System.Data.SqlClient;
 
@@ -35,7 +35,7 @@ namespace CsvForSql
             {
                 bulkCopy.DestinationTableName = tableName;
 
-                foreach (DataReaderColumn column in reader.Header)
+                foreach (CsvReaderColumn column in reader.Header)
                 {
                     bulkCopy.ColumnMappings.Add(column.Name, column.Name);
                 }
@@ -46,7 +46,7 @@ namespace CsvForSql
 
         private DataTable GetSchemaOfTable(string tableName)
         {
-            //Параметр tableName должен быть проверен методом CheckIfTableExistsInDatabase().
+            //Параметр tableName должен быть проверен методом CheckIfTableExists().
             //Если проверка пройдена, то в tableName нет SQL-инъекции.
 
             string query = $"SELECT TOP(0) * FROM {tableName};";
