@@ -207,6 +207,15 @@ namespace CsvForSql
                 Console.WriteLine("Csv file successfully imported!");
                 state = ProgramState.Closing;
             }
+            catch (TableNotFoundException ex)
+            {
+                Console.WriteLine($"Fatal error: {ex.Message}.");
+                Console.WriteLine("Ensure that the table has not been deleted " + 
+                                  "from the database while you were using the program.");
+                Console.WriteLine();
+
+                state = ProgramState.ImportFailed;
+            }
             catch (Exception ex) when (IsCsvException(ex))
             {
                 Console.WriteLine($"Csv file error: {ex.Message}");

@@ -28,8 +28,18 @@ namespace CsvForSql
             return tablesCount > 0;
         }
 
+        /// <exception cref="TableNotFoundException"/>
+        /// <exception cref="FileNotFoundException"/>
+        /// <exception cref="MalformedLineException"/>
+        /// <exception cref="HeaderColumnNotFoundInTableException"/>
+        /// <exception cref="FormatException"/>
         public void ImportCsvToTable(string csvFilePath, string tableName)
         {
+            if (!CheckIfTableExists(tableName))
+            {
+                throw new TableNotFoundException(tableName);
+            }
+
             using (SqlCsvReader reader = new SqlCsvReader(csvFilePath, GetSchemaOfTable(tableName)))
             using (SqlBulkCopy bulkCopy = new SqlBulkCopy(connection))
             {
@@ -49,7 +59,7 @@ namespace CsvForSql
             //Параметр tableName должен быть проверен методом CheckIfTableExists().
             //Если проверка пройдена, то в tableName нет SQL-инъекции.
 
-            string query = $"SELECT TOP(0) * FROM {tableName};";
+            string query = $"SELECT * FROM {tableName};";
 
             SqlCommand command = new SqlCommand(query, connection);
             DataTable schemaTable = new DataTable();
@@ -58,7 +68,7 @@ namespace CsvForSql
             {
                 schemaTable.Load(reader);
             }
-
+            
             return schemaTable;
         }
     }
