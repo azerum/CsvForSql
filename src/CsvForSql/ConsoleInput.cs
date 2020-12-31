@@ -11,32 +11,6 @@ namespace CsvForSql
             return Console.ReadLine();
         }
 
-        public static int ChooseOption(string optionsPromt, params int[] options)
-        {
-            Console.WriteLine(optionsPromt);
-            int inputLineNumber = Console.CursorTop;
-
-            int choice;
-
-            while (true)
-            {
-                ClearAllBetweenCursorAndLineWithNumber(inputLineNumber);
-
-                Console.Write("> ");
-                string input = Console.ReadLine();
-
-                if (Int32.TryParse(input, out choice))
-                {
-                    if (options.Contains(choice))
-                    {
-                        break;
-                    }
-                }
-            }
-
-            return choice;
-        }
-
         public static string ChooseOption(string optionsPromt, params string[] options)
         {
             return ChooseOption(optionsPromt, ignoreCase: true, options);

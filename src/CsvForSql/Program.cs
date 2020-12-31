@@ -91,13 +91,13 @@ namespace CsvForSql
             connectionStringBuilder.DataSource = ConsoleInput.AskString("SQL Server instance name");
             Console.WriteLine();
 
-            int authType = ConsoleInput.ChooseOption("Choose type of authentication\n\n" +
-                                                     "1. Windows Authentication\n" +
-                                                     "2. SQL Server Authentication\n",
-                                                      1, 2);
+            string authType = ConsoleInput.ChooseOption("Choose type of authentication\n\n" +
+                                                        "1. Windows Authentication\n" +
+                                                        "2. SQL Server Authentication\n",
+                                                        "1", "2");
             Console.WriteLine();
 
-            if (authType == 1)
+            if (authType == "1")
             {
                 connectionStringBuilder.IntegratedSecurity = true;
             }
