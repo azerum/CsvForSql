@@ -1,2 +1,1 @@
-# CsvForSql
-Simple CLI program for importing CSV file into SQL Server database
+(Homework) Simple CLI program for importing CSV file into SQL Server database
